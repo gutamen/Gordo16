@@ -35,7 +35,24 @@ section .bss
     arquivo : resq 1
     argv    : resq 1
     argc    : resq 1
-    bytet   : resb 1
+  
+
+    disassemble       : resb 3  ; offset 0
+    OEMIdentifier     : resb 8  ; offset 3
+    bytesPerSector    : resb 2  ; offset 11
+    sectorsPerCluster : resb 1  ; offset 13
+    reservedSectors   : resb 2  ; offset 14
+    FATNumber         : resb 1  ; offset 16
+    directoryEntries  : resb 2  ; offset 17
+    totalSectors      : resb 2  ; offset 19
+    mediaDescriptor   : resb 1  ; offset 21
+    sectorsPerFAT     : resb 2  ; offset 22
+    sectorsPerTrack   : resb 2  ; offset 24
+    headsOfStorage    : resb 2  ; offset 26
+    hiddenSectors     : resb 4  ; offset 28
+    largeTotalSectors : resb 4  ; offset 32
+
+    bootRecordInit    : resq 1  ; posição no arquivo
 
 section .text
 
@@ -66,33 +83,90 @@ _start:
 
   mov rax,  _read
   mov rdi,  [arquivo]
-  lea rsi,  [bytet]
-  mov rdx,  1
-  syscall
-
-  tes:
-  
-  mov rax,  _read
-  mov rdi,  [arquivo]
-  lea rsi,  [bytet]
-  mov rdx,  1
-  syscall
-
-  tes1:
-
-  mov rax,  _seek
-  mov rdi,  [arquivo]
-  mov rsi,  0
-  mov rdx,  0
+  lea rsi,  [disassemble]
+  mov rdx,  3
   syscall
 
   mov rax,  _read
   mov rdi,  [arquivo]
-  lea rsi,  [bytet]
+  lea rsi,  [OEMIdentifier]
+  mov rdx,  8
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [bytesPerSector]
+  mov rdx,  2
+  syscall 
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [sectorsPerCluster]
+  mov rdx,  1
+  syscall
+    
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [reservedSectors]
+  mov rdx,  2
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [FATNumber]
   mov rdx,  1
   syscall
 
-  tes2:
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [directoryEntries]
+  mov rdx,  2
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [totalSectors]
+  mov rdx,  2
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [mediaDescriptor]
+  mov rdx,  1
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [sectorsPerFAT]
+  mov rdx,  2
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [sectorsPerTrack]
+  mov rdx,  2
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [headsOfStorage]
+  mov rdx,  2
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [hiddenSectors]
+  mov rdx,  4
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [largeTotalSectors]
+  mov rdx,  4
+  syscall
+
+  mov ax, [bytesPerSector]
+  mov bx, [reservedSectors]
 
 _stop:
   mov rax,  _close
