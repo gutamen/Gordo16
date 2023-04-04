@@ -8,6 +8,8 @@
 %define _write    1
 %define _open     2
 %define _read     0
+%define _seek     8
+%define _close    3
 %define readOnly  0o    ; flag open()
 %define writeOnly 1o    ; flag open()
 %define readwrite 2o    ; flag open()
@@ -33,6 +35,7 @@ section .bss
     arquivo : resq 1
     argv    : resq 1
     argc    : resq 1
+    bytet   : resb 1
 
 section .text
 
@@ -58,9 +61,43 @@ _start:
   syscall
 
   mov [arquivo], rax                   ; Salvar ponteiro do arquivo
-  cmp rax, 0
+  cmp rax, 0                           ; Verifica se o arquivo foi aberto
   jl _arqError
-   
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [bytet]
+  mov rdx,  1
+  syscall
+
+  tes:
+  
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [bytet]
+  mov rdx,  1
+  syscall
+
+  tes1:
+
+  mov rax,  _seek
+  mov rdi,  [arquivo]
+  mov rsi,  0
+  mov rdx,  0
+  syscall
+
+  mov rax,  _read
+  mov rdi,  [arquivo]
+  lea rsi,  [bytet]
+  mov rdx,  1
+  syscall
+
+  tes2:
+
+_stop:
+  mov rax,  _close
+  mov rdi,  [arquivo]
+  syscall
 
 _end:
   mov rax,  _exit
