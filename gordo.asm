@@ -54,6 +54,7 @@ section .bss
 
     rootDirectoryInit : resq 1  ; posição no arquivo
     dataClustersInit  : resq 1  ; posição dos dados
+    firstFATTable     : resq 1  ; posição da primeira FAT
 
 section .text
 
@@ -187,7 +188,6 @@ _start:
   xor rax, rax
   mov ax, [directoryEntries]
   imul rax, 32
-  tes:
   xor r15, r15
   mov r15w, [bytesPerSector]
   div r15
@@ -208,9 +208,48 @@ _start:
   add rax, [rootDirectoryInit]
   mov [dataClustersInit], rax
 
+  xor rax, rax
+  xor rdx, rdx
+  mov ax, [bytesPerSector]
+  mov bx, [reservedSectors]
   
+  imul rax, rbx
+  mov [firstFATTable], rax
+ 
 
+_readHead: 
+  xor r15, r15
+  xor r14, r14
+  xor r13, r13
+_initRead:
 
+  mov rax, _seek
+  mov rdi, [arquivo]
+  mov rsi, [rootDirectoryInit + r15 ]
+  mov rdx, 0
+  syscall
+  
+  add r15, 32
+
+  sub rsp, 32
+  mov rax, _read
+  mov rdi, [arquivo]
+  mov rsi, rsp
+  mov rdx, 32
+  syscall
+
+  inc r13
+  
+  cmp byte[rsp], 0xe5
+  je naoExiste
+    cmp byte[rsp + 11], 0x0f
+    jne noLongFile
+      naoExiste:
+        add rsp, 32
+        jmp _initRead
+    noLongFile:
+      inc r14
+      jmp _initRead
 _stop:
   mov rax, _close
   mov rdi, [arquivo]
