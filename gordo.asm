@@ -55,6 +55,7 @@ section .bss
     rootDirectoryInit : resq 1  ; posição no arquivo
     dataClustersInit  : resq 1  ; posição dos dados
     firstFATTable     : resq 1  ; posição da primeira FAT
+    readNow	      : resq 1  ; qual arquivo está sendo lido
 
 section .text
 
@@ -215,7 +216,9 @@ _start:
   
   imul rax, rbx
   mov [firstFATTable], rax
- 
+
+  mov rax, [rootDirectoryInit]
+  mov [readNow], rax
 
 _readHead: 
   xor r15, r15
@@ -225,7 +228,7 @@ _initRead:
 
   mov rax, _seek
   mov rdi, [arquivo]
-  mov rsi, [rootDirectoryInit + r15 ]
+  mov rsi, [readNow + r15 ]
   mov rdx, 0
   syscall
   
@@ -250,6 +253,8 @@ _initRead:
     noLongFile:
       inc r14
       jmp _initRead
+
+
 _stop:
   mov rax, _close
   mov rdi, [arquivo]
