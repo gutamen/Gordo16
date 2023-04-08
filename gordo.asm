@@ -28,6 +28,10 @@ section .data
 
     strOla  : db "Testi", 10, 0
     strOlaL : equ $-strOla
+	
+	jumpLine : db 10, 0 
+	
+	
 
 
 section .bss
@@ -55,8 +59,9 @@ section .bss
     rootDirectoryInit : resq 1  ; posição no arquivo
     dataClustersInit  : resq 1  ; posição dos dados
     firstFATTable     : resq 1  ; posição da primeira FAT
-    readNow	      : resq 1  ; qual arquivo está sendo lido
-
+    readNow	          : resq 1  ; qual arquivo está sendo lido
+	stackPointerRead  : resq 1  ; salvar onde estava a pilha no começo da leitura do diretório
+	totalEntrances	  : resq 1  ; entradas no diretório lido
 section .text
 
     global _start
@@ -221,6 +226,7 @@ _start:
   mov [readNow], rax
 
 _readHead: 
+  mov [stackPointerRead], rsp
   xor r15, r15
   xor r14, r14
   xor r13, r13
@@ -228,8 +234,9 @@ _initRead:
 
   mov rax, _seek
   mov rdi, [arquivo]
-  mov rsi, [readNow + r15 ]
-  mov rdx, 0
+  mov rsi, [readNow]
+  add rsi, r15
+  xor rdx, rdx
   syscall
   
   add r15, 32
@@ -239,6 +246,7 @@ _initRead:
   mov rdi, [arquivo]
   mov rsi, rsp
   mov rdx, 32
+
   syscall
 
   inc r13
@@ -252,7 +260,43 @@ _initRead:
         jmp _initRead
     noLongFile:
       inc r14
+	  cmp r13w, WORD[directoryEntries]
+		je fimLeitura
+	  xor r10, r10
+	  cmp r10b, BYTE[rsp]
+		je fimLeituraComRedimensionamento
       jmp _initRead
+
+fimLeituraComRedimensionamento:
+	add rsp, 32
+	dec r14
+fimLeitura:
+	mov [totalEntrances], r14
+	xor r14, r14
+	xor r15, r15
+	mov r15, [stackPointerRead]
+	sub r15, 32
+directoryPrint:
+	cmp r14, [totalEntrances]
+	je printEnd
+	
+	mov rax, _write
+	mov rdi, 1
+	mov rsi, r15
+	mov rdx, 11
+	syscall
+	
+	mov rax, _write
+	mov rdi, 1
+	mov rsi, jumpLine
+	mov rdx, 1
+	syscall
+	sub r15, 32
+	inc r14
+	jmp directoryPrint
+printEnd:
+
+
 
 
 _stop:
