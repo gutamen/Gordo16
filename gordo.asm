@@ -62,6 +62,10 @@ section .bss
     readNow	          : resq 1  ; qual arquivo está sendo lido
 	stackPointerRead  : resq 1  ; salvar onde estava a pilha no começo da leitura do diretório
 	totalEntrances	  : resq 1  ; entradas no diretório lido
+	
+	
+	searcher		  : resb 128; leitor do terminal
+	
 section .text
 
     global _start
@@ -295,6 +299,30 @@ directoryPrint:
 	inc r14
 	jmp directoryPrint
 printEnd:
+
+
+preLecture:
+	xor r15, r15
+	
+functionLecture:
+	
+	mov rax, _read
+	mov rdi, 0
+	lea rsi, [searcher + r15]
+	;add rsi, r15
+	
+	mov rdx, 1
+	syscall
+
+	cmp BYTE[searcher + r15], 0x0a
+	
+
+	inc r15
+	jmp functionLecture
+	
+caseCommands:
+
+
 
 
 
