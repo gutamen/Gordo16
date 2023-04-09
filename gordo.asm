@@ -15,8 +15,9 @@
 %define readwrite 2o    ; flag open()
 %define openrw    102o  ; flag open()
 %define userWR    644o  ; Read+Write+Execute
-
-
+%define _cat	  0x20544143
+%define _ls		  0x0000534c
+%define _cd		  0x00204443
 
 section .data
     
@@ -25,11 +26,17 @@ section .data
 
     arqErrorS : db "Erro: Arquivo não foi aberto", 10, 0
     arqErrorSL: equ $-arqErrorS
+	
+	argErrorC : db "Erro: Comando incorreto", 10, 0
+    argErrorCL: equ $-argErrorC
 
     strOla  : db "Testi", 10, 0
     strOlaL : equ $-strOla
 	
 	jumpLine : db 10, 0 
+	
+	clearTerm  : db   27,"[H",27,"[2J"    ; <ESC> [H <ESC> [2J
+	clearTermL : equ  $-clearTerm         ; tamanho da string para limpar terminal
 	
 	
 
@@ -63,8 +70,12 @@ section .bss
 	stackPointerRead  : resq 1  ; salvar onde estava a pilha no começo da leitura do diretório
 	totalEntrances	  : resq 1  ; entradas no diretório lido
 	
+	commandType		  : resb 1
+	longI             : resq 1
+	
 	
 	searcher		  : resb 128; leitor do terminal
+	tempSearcher	  : resb 128; reorganizar string lida
 	
 section .text
 
@@ -275,6 +286,8 @@ fimLeituraComRedimensionamento:
 	add rsp, 32
 	dec r14
 fimLeitura:
+
+printDir:
 	mov [totalEntrances], r14
 	xor r14, r14
 	xor r15, r15
@@ -309,23 +322,50 @@ functionLecture:
 	mov rax, _read
 	mov rdi, 0
 	lea rsi, [searcher + r15]
-	;add rsi, r15
-	
 	mov rdx, 1
 	syscall
 
 	cmp BYTE[searcher + r15], 0x0a
-	
+		je caseCommands
 
 	inc r15
 	jmp functionLecture
 	
 caseCommands:
 
+	caseCAT:
+		xor r12, r12
+		mov r12d, [searcher]
+		mov BYTE[commandType], 0x01
+		xor r13, r13
+		lea r13, [searcher + 4]
+		and r12d, _cat
+		cmp r12d, _cat
+		je verifyParameter
 
-
-
-
+	caseLS:
+		xor r12, r12
+		mov r12d, [searcher]
+		mov BYTE[commandType], 0x02
+		xor r13, r13
+		lea r13, [searcher + 3]
+		and r12d, _ls
+		cmp r12d, _ls
+		je cleanParams
+		
+	caseCD:
+		xor r12, r12
+		mov r12d, [searcher]
+		mov BYTE[commandType], 0x03
+		xor r13, r13
+		lea r13, [searcher + 3]
+		and r12d, _cd
+		cmp r12d, _cd
+		je verifyParameter
+		
+	caseERRO:
+		jmp errorCommand
+		
 
 _stop:
   mov rax, _close
@@ -357,3 +397,138 @@ _argError:
   jmp _end
 
 
+verifyParameter:
+	and QWORD[longI], 0
+	xor r15, r15
+	mov r15, [stackPointerRead]
+	sub r15, 32
+	xor r11, r11
+	xor r8, r8
+
+		forCompare:
+			xor rbx, rbx
+			mov bl, BYTE[r13 + r11]
+			cmp r8, 0				;
+			je ponto				;	teste para ponto 
+			preTestPonto:			;	e ponto + ponto
+			cmp bl, 0x2e
+			je posPonto
+			cmp bl, 0x0a
+			je forSearch
+			mov BYTE[tempSearcher + r8], bl
+			inc r11
+			inc r8
+			cmp r11, 8
+			je posPonto
+			jmp forCompare
+			
+		moreSpace:
+			mov BYTE[tempSearcher + r8], 0x20
+			inc r8
+			cmp r8, 8
+			jne moreSpace
+			
+		posPonto:
+			cmp r8, 8 
+			jl moreSpace
+			
+			inc r11
+			
+		continue:
+			cmp BYTE[r13 + r11], 0x0a
+			je moreSpacePoint
+			
+			xor rbx, rbx
+			mov bl, BYTE[r13 + r11]
+			mov BYTE[tempSearcher + r8], bl
+			inc r8
+			inc r11
+			cmp r8, 11
+			jl continue
+			
+		moreSpacePoint:
+			cmp r8, 11
+			jge preForSearch
+			mov BYTE[tempSearcher + r8], 0x20
+			inc r8
+			jmp moreSpacePoint
+			
+		ponto:											;
+			cmp bl, 0x2e								;
+			jne preTestPonto							;
+			cmp byte[r13 + 1], 0x2e						; tramento especial 
+			je pontoPonto								; para condições de 
+			inc r8										; navegação em arquivo
+			mov BYTE[tempSearcher], 0x2e				;
+			jmp posPonto								;
+			
+		pontoPonto:										;
+			add r8, 2									;
+			mov BYTE[tempSearcher], 0x2e				;
+			mov BYTE[tempSearcher + 1], 0x2e			;
+			jmp posPonto								;
+	
+	preForSearch:
+		mov r14, [totalEntrances]
+		xor rcx, rcx
+		xor rdx, rdx
+		mov rcx, [tempSearcher]
+		mov edx, [tempSearcher + 8]
+		xor rbx, rbx
+	forSearch:
+		cmp QWORD[longI], r14
+		je endSearch
+		mov ebx, [r15 + 8]
+		and ebx, 0x00ffffff
+		cmp QWORD[r15], rcx
+		je firstEqual
+		inc QWORD[longI]
+		sub r15, 32
+		jmp forSearch
+		
+		firstEqual:
+			cmp ebx, edx
+			je endSearch
+			inc QWORD[longI]
+			sub r15, 32
+			jmp forSearch
+	
+endSearch:
+	cmp r14, QWORD[longI]
+	je errorCommand
+	cmp BYTE[commandType], 0x01
+	je catCommand
+	
+errorCommand:
+	mov rax, _write
+	mov rdi, 1
+	lea rsi, [argErrorC]
+	mov rdx, argErrorCL
+	syscall
+	jmp cleanParams
+	
+cleanParams:
+	xor rcx, rcx
+	mov rcx, 16
+	forClear:
+	dec rcx
+	and QWORD[searcher + rcx * 8], 0
+	and QWORD[tempSearcher + rcx * 8], 0
+	jecxz forClear
+	cmp BYTE[commandType], 0x02
+	je lsCommand
+	jmp preLecture
+	
+lsCommand:
+
+	mov rax, _write
+	mov rdi, 1
+	lea rsi, [clearTerm]
+	mov rdx, clearTermL
+	syscall
+	
+	and BYTE[commandType], 0x00
+	jmp printDir
+	
+	
+catCommand:
