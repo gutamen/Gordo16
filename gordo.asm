@@ -29,6 +29,12 @@ section .data
 	
 	argErrorC : db "Erro: Comando incorreto", 10, 0
     argErrorCL: equ $-argErrorC
+	
+	argErrorCAT: db "Erro: não é possível fazer CAT neste tipo", 10, 0
+    argErrorCATL: equ $-argErrorCAT
+	
+	argErrorDIR: db "Erro: não é possível abrir diretório", 10, 0
+    argErrorDIRL: equ $-argErrorDIR
 
     strOla  : db "Testi", 10, 0
     strOlaL : equ $-strOla
@@ -274,14 +280,13 @@ _initRead:
   mov rdi, [arquivo]
   mov rsi, rsp
   mov rdx, 32
-
   syscall
 
   inc r13
   
-  cmp byte[rsp], 0xe5
+  cmp BYTE[rsp], 0xe5
   je naoExiste
-    cmp byte[rsp + 11], 0x0f
+    cmp BYTE[rsp + 11], 0x0f
     jne noLongFile
       naoExiste:
         add rsp, 32
@@ -428,7 +433,7 @@ verifyParameter:
 			cmp bl, 0x2e
 			je posPonto
 			cmp bl, 0x0a
-			je forSearch
+			je posPonto
 			mov BYTE[tempSearcher + r8], bl
 			inc r11
 			inc r8
@@ -450,6 +455,8 @@ verifyParameter:
 			
 		continue:
 			cmp BYTE[r13 + r11], 0x0a
+			je moreSpacePoint
+			cmp BYTE[r13 + r11], 0
 			je moreSpacePoint
 			
 			xor rbx, rbx
@@ -510,8 +517,7 @@ verifyParameter:
 endSearch:
 	cmp r14, QWORD[longI]
 	je errorCommand
-	cmp BYTE[commandType], 0x01
-	je catCommand
+	jmp cleanParams
 	
 errorCommand:
 	mov rax, _write
@@ -519,6 +525,7 @@ errorCommand:
 	lea rsi, [argErrorC]
 	mov rdx, argErrorCL
 	syscall
+	mov BYTE[commandType], 0
 	jmp cleanParams
 	
 cleanParams:
@@ -526,11 +533,18 @@ cleanParams:
 	mov rcx, 16
 	forClear:
 	dec rcx
-	and QWORD[searcher + rcx * 8], 0
-	and QWORD[tempSearcher + rcx * 8], 0
-	jecxz forClear
+	mov QWORD[searcher + rcx *  8], 0
+	mov QWORD[tempSearcher + rcx * 8], 0
+	jecxz fimClear
+	jmp forClear
+	fimClear:
 	cmp BYTE[commandType], 0x02
 	je lsCommand
+	cmp BYTE[commandType], 0x01
+	je catCommand
+	cmp BYTE[commandType], 0x03
+	je cdCommand
+	
 	jmp preLecture
 	
 lsCommand:
@@ -541,7 +555,7 @@ lsCommand:
 	mov rdx, clearTermL
 	syscall
 	
-	and BYTE[commandType], 0x00
+	mov BYTE[commandType], 0
 	jmp printDir
 	
 	
@@ -554,9 +568,11 @@ catCommand:
 	mov r15, [stackPointerRead]
 	sub r15, r14
 	xor r14, r14
+	cmp BYTE[r15 + 11], 0x20
+	jne errorFormat
 	mov r14w, [r15 + 26]
 	xor r13, r13
-	and QWORD[fileSize], 0
+	mov QWORD[fileSize], 0
 	mov r13d, [r15 + 28]
 	mov [fileSize], r13
 	
@@ -624,7 +640,7 @@ catCommand:
 		xor rbx, rbx
 		mul QWORD[clusterSize]
 		add rax, [dataClustersInit]
-		tes:
+		
 		inc QWORD[longI]
 		
 		mov rsi, rax
@@ -660,17 +676,53 @@ catCommand:
 		
 		
 	jmp printArchive
-
+	
+	errorFormat:
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [argErrorCAT] 
+		mov rdx, argErrorCATL
+		syscall
+		mov BYTE[commandType], 0
+		jmp printDir
+		
 	printFinalize:
 		add rsp, 2
 		shl QWORD[clusterCount], 1
 		add rsp, [clusterCount]
-		and QWORD[clusterCount], 0
+		mov QWORD[clusterCount], 0
 		and BYTE[bus], 0
-		and QWORD[clustersPointer], 0
+		mov QWORD[clustersPointer], 0
+		mov BYTE[commandType], 0
 		jmp printDir
-	
+
+
+cdCommand:
+    mov r14, [longI]
+	xor rdx, rdx
+	xor rax, rax
+	inc r14
+	imul r14, 32
+	mov r15, [stackPointerRead]
+	sub r15, r14
+	xor r14, r14
+	cmp BYTE[r15 + 11], 0x10
+	jne errorDirType
+	mov r14w, [r15 + 26]
+	xor r13, r13
+	sub r14, 2
+	mov rax, r14
+	xor rdx, rdx
+	mul QWORD[clusterSize]
+	mov [readNow], rax
+	mov rsp, [stackPointerRead]
+	jmp _readHead
 	  
-	  
-	
+	errorDirType:
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [argErrorDIR] 
+		mov rdx, argErrorDIRL
+		syscall 
+		jmp printDir
 	
