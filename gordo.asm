@@ -427,8 +427,8 @@ verifyParameter:
 		forCompare:
 			xor rbx, rbx
 			mov bl, BYTE[r13 + r11]
-			cmp r8, 0				;
-			je ponto				;	teste para ponto 
+			cmp r8, 0					;
+			je ponto					;	teste para ponto 
 			preTestPonto:			;	e ponto + ponto
 			cmp bl, 0x2e
 			je posPonto
@@ -474,22 +474,23 @@ verifyParameter:
 			inc r8
 			jmp moreSpacePoint
 			
-		ponto:											;
-			cmp bl, 0x2e								;
-			jne preTestPonto							;
-			cmp byte[r13 + 1], 0x2e						; tramento especial 
-			je pontoPonto								; para condições de 
-			inc r8										; navegação em arquivo
-			mov BYTE[tempSearcher], 0x2e				;
-			jmp posPonto								;
-			
-		pontoPonto:										;
-			add r8, 2									;
-			mov BYTE[tempSearcher], 0x2e				;
-			mov BYTE[tempSearcher + 1], 0x2e			;
-			jmp posPonto								;
+		ponto:													;
+			cmp bl, 0x2e									;
+			jne preTestPonto								;
+			cmp byte[r13 + 1], 0x2e					; tramento especial 
+			je pontoPonto									; para condições de 
+			inc r8												; navegação em arquivo
+			mov BYTE[tempSearcher], 0x2e		;
+			jmp moreSpacePoint							;
+																	;
+		pontoPonto:											;
+			add r8, 2											;
+			mov BYTE[tempSearcher], 0x2e		;
+			mov BYTE[tempSearcher + 1], 0x2e	;
+			jmp moreSpacePoint							;
 	
 	preForSearch:
+		and QWORD[longI], 0
 		mov r14, [totalEntrances]
 		xor rcx, rcx
 		xor rdx, rdx
@@ -709,15 +710,38 @@ cdCommand:
 	cmp BYTE[r15 + 11], 0x10
 	jne errorDirType
 	mov r14w, [r15 + 26]
+	cmp r14, 0
+	je rootDirJMP
 	xor r13, r13
 	sub r14, 2
 	mov rax, r14
 	xor rdx, rdx
 	mul QWORD[clusterSize]
+	add rax, [dataClustersInit]
 	mov [readNow], rax
 	mov rsp, [stackPointerRead]
+	
+	mov rax, _write
+	mov rdi, 1
+	lea rsi, [clearTerm]
+	mov rdx, clearTermL
+	syscall
+	
 	jmp _readHead
 	  
+	rootDirJMP:
+		mov rax, [rootDirectoryInit]
+		mov [readNow], rax
+		mov rsp, [stackPointerRead]
+		
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [clearTerm]
+		mov rdx, clearTermL
+		syscall
+		
+		jmp _readHead
+		
 	errorDirType:
 		mov rax, _write
 		mov rdi, 1
