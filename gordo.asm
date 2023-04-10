@@ -69,10 +69,13 @@ section .bss
     readNow	          : resq 1  ; qual arquivo está sendo lido
 	stackPointerRead  : resq 1  ; salvar onde estava a pilha no começo da leitura do diretório
 	totalEntrances	  : resq 1  ; entradas no diretório lido
+	clusterSize	      : resq 1  ; quantos bytes tem por cluster
 	
 	commandType		  : resb 1
 	longI             : resq 1
-	
+	clusterCount	  : resq 1
+	clustersPointer	  : resq 1
+	bus				  : resb 1
 	
 	searcher		  : resb 128; leitor do terminal
 	tempSearcher	  : resb 128; reorganizar string lida
@@ -239,6 +242,14 @@ _start:
 
   mov rax, [rootDirectoryInit]
   mov [readNow], rax
+
+  xor rdx, rdx
+  xor rax, rax
+  xor rbx, rbx
+  mov al, [sectorsPerCluster]
+  mov bx, [bytesPerSector]
+  mul rbx
+  mov [clusterSize], rax
 
 _readHead: 
   mov [stackPointerRead], rsp
@@ -532,3 +543,116 @@ lsCommand:
 	
 	
 catCommand:
+	mov r14, [longI]
+	xor rdx, rdx
+	xor rax, rax
+	inc r14
+	imul r14, 32
+	mov r15, [stackPointerRead]
+	sub r15, r14
+	xor r14, r14
+	mov r14w, [r15 + 26]
+	xor r13, r13
+	mov r13d, [r15 + 28]
+	
+	xor rax, rax
+	xor rdx, rdx
+	
+	mov rax, r13
+	mov rbx, [clusterSize]
+	div rbx
+	
+	mov [clusterCount], rax
+	cmp rdx, 0
+	je noResto
+		inc QWORD[clusterCount]
+	noResto:
+	mov rax, [clusterCount]	
+	inc rax
+	shl rax, 1
+	sub rsp, rax
+	mov [clustersPointer], rsp
+	
+	mov [rsp], r14w
+	and QWORD[longI], 0x0
+	
+	forClusters:
+		mov rax, [firstFATTable]
+		xor rdx, rdx
+		mov r14, QWORD[longI]
+		mov bx, [rsp + r14 * 2]
+		cmp bx, 0xFFF8
+		jae endClustrers
+			shl rbx, 1
+			add rax, rbx
+			inc QWORD[longI]
+			mov r14, [longI]
+
+			mov rsi, rax
+			mov rax, _seek
+			mov rdi, [arquivo]
+			xor rdx, rdx
+			syscall
+		
+			mov rax, _read
+			mov rdi, [arquivo]
+			lea rsi, [rsp + r14 * 2]
+			mov rdx, 2
+			syscall
+
+			
+		jmp forClusters
+	endClustrers:
+	
+	and QWORD[longI], 0
+	xor r13, r13
+	xor r12, r12
+	
+	printArchive:
+		mov r14, QWORD[longI]
+		xor rax, rax
+		mov ax, [rsp + r14 * 2]
+		cmp ax, 0xfff8
+		jae printDir
+		sub rax, 2
+		xor rdx, rdx
+		xor rbx, rbx
+		mul QWORD[clusterSize]
+		add rax, [dataClustersInit]
+		tes:
+		inc QWORD[longI]
+		
+		mov rsi, rax
+		mov rax, _seek
+		mov rdi, [arquivo]
+		xor rdx, rdx
+		syscall
+		
+		xor r12, r12
+		readerGuest:
+			cmp r12, QWORD[clusterSize]
+			je readerEnd
+			
+			mov rax, _read
+			mov rdi, [arquivo]
+			lea rsi, [bus]
+			mov rdx, 1
+			syscall
+			
+			mov rax, _write
+			mov rdi, 1
+			lea rsi, [bus]
+			mov rdx, 1
+			syscall
+			
+			inc r12
+			jmp readerGuest
+		readerEnd:
+	
+	jmp printArchive
+	
+	  
+	  
+	  
+	
+	
