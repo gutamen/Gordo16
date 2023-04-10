@@ -68,15 +68,17 @@ section .bss
     firstFATTable     : resq 1  ; posição da primeira FAT
     readNow	          : resq 1  ; qual arquivo está sendo lido
 	stackPointerRead  : resq 1  ; salvar onde estava a pilha no começo da leitura do diretório
+	
 	totalEntrances	  : resq 1  ; entradas no diretório lido
 	clusterSize	      : resq 1  ; quantos bytes tem por cluster
-	
-	commandType		  : resb 1
-	longI             : resq 1
 	clusterCount	  : resq 1
 	clustersPointer	  : resq 1
 	bus				  : resb 1
-	
+	fileSize		  : resq 1
+		
+	commandType		  : resb 1
+	longI             : resq 1
+
 	searcher		  : resb 128; leitor do terminal
 	tempSearcher	  : resb 128; reorganizar string lida
 	
@@ -297,9 +299,10 @@ fimLeituraComRedimensionamento:
 	add rsp, 32
 	dec r14
 fimLeitura:
-
-printDir:
+	
 	mov [totalEntrances], r14
+
+printDir:	
 	xor r14, r14
 	xor r15, r15
 	mov r15, [stackPointerRead]
@@ -553,7 +556,9 @@ catCommand:
 	xor r14, r14
 	mov r14w, [r15 + 26]
 	xor r13, r13
+	and QWORD[fileSize], 0
 	mov r13d, [r15 + 28]
+	mov [fileSize], r13
 	
 	xor rax, rax
 	xor rdx, rdx
@@ -613,7 +618,7 @@ catCommand:
 		xor rax, rax
 		mov ax, [rsp + r14 * 2]
 		cmp ax, 0xfff8
-		jae printDir
+		jae printFinalize
 		sub rax, 2
 		xor rdx, rdx
 		xor rbx, rbx
@@ -629,6 +634,7 @@ catCommand:
 		syscall
 		
 		xor r12, r12
+		xor r15, r15
 		readerGuest:
 			cmp r12, QWORD[clusterSize]
 			je readerEnd
@@ -646,12 +652,24 @@ catCommand:
 			syscall
 			
 			inc r12
+			inc r13
+			cmp r13, [fileSize]
+				je readerEnd
 			jmp readerGuest
 		readerEnd:
-	
+		
+		
 	jmp printArchive
+
+	printFinalize:
+		add rsp, 2
+		shl QWORD[clusterCount], 1
+		add rsp, [clusterCount]
+		and QWORD[clusterCount], 0
+		and BYTE[bus], 0
+		and QWORD[clustersPointer], 0
+		jmp printDir
 	
-	  
 	  
 	  
 	
