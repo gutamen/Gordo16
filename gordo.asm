@@ -712,6 +712,8 @@ cdCommand:
 	mov r14w, [r15 + 26]
 	cmp r14, 0
 	je rootDirJMP
+	
+	
 	xor r13, r13
 	sub r14, 2
 	mov rax, r14
@@ -750,3 +752,52 @@ cdCommand:
 		syscall 
 		jmp printDir
 	
+
+
+	_readHead2: 
+	  mov [stackPointerRead], rsp
+	  xor r15, r15
+	  xor r14, r14
+	  xor r13, r13
+	_initRead2:
+
+	  mov rax, _seek
+	  mov rdi, [arquivo]
+	  mov rsi, [readNow]
+	  add rsi, r15
+	  xor rdx, rdx
+	  syscall
+	  
+	  add r15, 32
+
+	  sub rsp, 32
+	  mov rax, _read
+	  mov rdi, [arquivo]
+	  mov rsi, rsp
+	  mov rdx, 32
+	  syscall
+
+	  inc r13
+	  
+	  cmp BYTE[rsp], 0xe5
+	  je naoExiste2
+		cmp BYTE[rsp + 11], 0x0f
+		jne noLongFile2
+		  naoExiste2:
+			add rsp, 32
+			jmp _initRead2
+		noLongFile2:
+		  inc r14
+		  cmp r13w, WORD[directoryEntries]
+			je fimLeitura2
+		  xor r10, r10
+		  cmp r10b, BYTE[rsp]
+			je fimLeituraComRedimensionamento2
+		  jmp _initRead2
+
+	fimLeituraComRedimensionamento2:
+		add rsp, 32
+		dec r14
+	fimLeitura2:
+		
+		mov [totalEntrances], r14
