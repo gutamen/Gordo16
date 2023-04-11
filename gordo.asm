@@ -81,7 +81,8 @@ section .bss
 	clustersPointer	  : resq 1
 	bus				  : resb 1
 	fileSize		  : resq 1
-		
+	suClusterPointer  : resq 1
+	
 	commandType		  : resb 1
 	longI             : resq 1
 
@@ -713,23 +714,45 @@ cdCommand:
 	cmp r14, 0
 	je rootDirJMP
 	
-	
-	xor r13, r13
-	sub r14, 2
 	mov rax, r14
+	sub rax, 2
 	xor rdx, rdx
 	mul QWORD[clusterSize]
 	add rax, [dataClustersInit]
 	mov [readNow], rax
-	mov rsp, [stackPointerRead]
 	
-	mov rax, _write
-	mov rdi, 1
-	lea rsi, [clearTerm]
-	mov rdx, clearTermL
+	cmp QWORD[suClusterPointer], 0
+	jne withClusters
+		mov rsp, [stackPointerRead]
+	goBack:
+	mov r13, r14
+	
+	shl r13, 1
+	
+	add r13, [firstFATTable]
+	
+	mov rax, _seek
+	mov rdi, [arquivo]
+	mov rsi, r13
+	xor rdx, rdx
 	syscall
 	
-	jmp _readHead
+	sub rsp, 2
+	mov rax, _read
+	mov rdi, [arquivo]
+	mov rsi, rsp
+	mov rdx, 2
+	syscall
+	
+	mov [suClusterPointer], rsp
+	and QWORD[longI], 0
+	jmp cdWithMoreClusters
+	
+	withClusters:
+		add QWORD[suClusterPointer], 2
+		mov rsp, [suClusterPointer]
+	jmp goBack
+	
 	  
 	rootDirJMP:
 		mov rax, [rootDirectoryInit]
@@ -752,13 +775,34 @@ cdCommand:
 		syscall 
 		jmp printDir
 	
-
-
+	cdWithMoreClusters:
+		xor rbx, rbx
+		mov bx, [rsp]
+		cmp bx, 0xfff8
+		jae _readHead2
+			shl rbx, 1
+			add rbx, [firstFATTable]
+			mov rax, _seek
+			mov rdi, [arquivo]
+			mov rsi, rbx
+			xor rdx, rdx
+			syscall
+				
+			sub rsp, 2
+			mov rax, _read
+			mov rdi, [arquivo]
+			mov rsi, [rsp]
+			mov rdx, 2
+			syscall
+		jmp cdWithMoreClusters
+	
 	_readHead2: 
+		
 	  mov [stackPointerRead], rsp
 	  xor r15, r15
 	  xor r14, r14
 	  xor r13, r13
+	  xor r12, r12
 	_initRead2:
 
 	  mov rax, _seek
@@ -777,7 +821,7 @@ cdCommand:
 	  mov rdx, 32
 	  syscall
 
-	  inc r13
+	  
 	  
 	  cmp BYTE[rsp], 0xe5
 	  je naoExiste2
@@ -788,16 +832,32 @@ cdCommand:
 			jmp _initRead2
 		noLongFile2:
 		  inc r14
-		  cmp r13w, WORD[directoryEntries]
-			je fimLeitura2
+	
 		  xor r10, r10
 		  cmp r10b, BYTE[rsp]
 			je fimLeituraComRedimensionamento2
+		  cmp QWORD[clusterSize], r15
+		  je updateReadNow
 		  jmp _initRead2
 
+	updateReadNow:
+		add r12, 2
+		mov r11, [suClusterPointer]
+		sub r11, r12
+		mov ax, [r11]
+		cmp ax, 0xfff8
+		jae fimLeitura2
+		sub rax, 2
+		xor rdx, rdx
+		mul QWORD[clusterSize]
+		add rax, [dataClustersInit]
+		mov [readNow], rax
+		xor r15, r15
+		jmp _initRead2
+		
 	fimLeituraComRedimensionamento2:
 		add rsp, 32
 		dec r14
 	fimLeitura2:
-		
 		mov [totalEntrances], r14
+		jmp printDir
