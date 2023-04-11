@@ -18,6 +18,7 @@
 %define _cat	  0x20544143
 %define _ls		  0x0000534c
 %define _cd		  0x00204443
+%define _quit	  0x54495551
 
 section .data
     
@@ -44,11 +45,39 @@ section .data
 	
 	jumpLine : db 10, 0 
 	
-	clearTerm  : db   27,"[H",27,"[2J"    ; <ESC> [H <ESC> [2J
+	clearTerm   : db   27,"[H",27,"[2J"    ; <ESC> [H <ESC> [2J
 	clearTermL : equ  $-clearTerm         ; tamanho da string para limpar terminal
 	
-	
+	dotChar : db 0x2e, 0
 
+	tabChar	: db 0x09, 0
+	
+	
+	; moldura para print
+	firstLine	: db "|", 0x09, "Nome", 0x09, 0x09, "|", 0x20, "Tipo", 0x20, "|", 0x09, "Tamanho", 0x09, 0x09, "|", 10 ,0 
+	firstLineL	: equ $-firstLine
+	
+	initLine		: db "|", 0x09, 0
+	initLineL	: equ $-initLine
+	
+	finishLine		: db "|", 0x0a, 0
+	finishLineL	: equ $-finishLine
+	
+	typeSpace	: db 0x09,"|", 0x20, 0
+	typeSpaceL	: equ $-typeSpace
+	
+	typeDir		: db "DIR", 0x20, 0
+	typeArch	: db "ARCH", 0
+	typeSize	: db 4
+	
+	typeFinish		: db 0x20, "|", 0x09, 0
+	typeFinishL	: equ $-typeFinish
+	
+	dirSizeChar	: db "-------", 0x09, 0x09, "|", 10, 0
+	dirSizeCharL	: equ $-dirSizeChar
+	
+	archFinish		: db 0x09, "|", 10, 0
+	archFinishL	: equ $-archFinish
 
 section .bss
     
@@ -89,9 +118,10 @@ section .bss
 	commandType		  : resb 1
 	longI             : resq 1
 
-	searcher		  : resb 128; leitor do terminal
-	tempSearcher	  : resb 128; reorganizar string lida
+	searcher		  	: resb 128; leitor do terminal
+	tempSearcher	: resb 128; reorganizar string lida
 	
+	sizedChars		: resb 32
 section .text
 
     global _start
@@ -318,8 +348,17 @@ fimLeitura:
 	mov [totalEntrances], r14
 
 printDir:	
+
+	mov rax, _write
+	mov rdi, 1
+	lea rsi, [firstLine]
+	mov rdx, firstLineL
+	syscall
+	
 	xor r14, r14
 	xor r15, r15
+	xor r13, r13
+	xor r11, r11
 	mov r15, [stackPointerRead]
 	sub r15, 32
 directoryPrint:
@@ -328,18 +367,179 @@ directoryPrint:
 	
 	mov rax, _write
 	mov rdi, 1
-	mov rsi, r15
-	mov rdx, 11
+	lea rsi, [initLine]
+	mov rdx, initLineL
 	syscall
+	
+	mov r13, r15
+	xor rbx, rbx
+	printNoSpace:
+		cmp BYTE[r13], 0x20
+		je spaceMoment
+		mov rax, _write
+		mov rdi, 1
+		mov rsi,  r13
+		mov rdx, 1
+		syscall
+	
+		inc rbx
+		inc r13
+		jmp printNoSpace
+	spaceMoment:
+		mov r13, r15
+		add r13, 8
+		mov r11, 8
+		cmp BYTE[r13], 0x20
+		je endExtension
+		
+		mov rax, _write
+		mov rdi, 1
+		lea rsi,  [dotChar]
+		mov rdx, 1
+		syscall
+	
+		
+	printExtension:
+		cmp BYTE[r13], 0x20
+		je endExtension
+		cmp r11, 11
+		je endExtension
+		
+		mov rax, _write
+		mov rdi, 1
+		mov rsi, r13
+		mov rdx, 1
+		syscall
+		
+		inc rbx
+		inc r11
+		inc r13
+		jmp printExtension
+	endExtension:
+	
+	cmp rbx, 6
+	jle oneTab
+	backTab:
 	
 	mov rax, _write
 	mov rdi, 1
-	mov rsi, jumpLine
-	mov rdx, 1
+	lea rsi, [typeSpace]
+	mov rdx, typeSpaceL
 	syscall
+	
+	mov r13, r15
+	add r13, 11
+	cmp BYTE[r13], 0x10
+	je printDirType
+	cmp BYTE[r13], 0x20
+	je printArchType
+	returnPrintType:
+	
+	
+	
+	
+	
 	sub r15, 32
 	inc r14
 	jmp directoryPrint
+	
+	printDirType:
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [typeDir]
+		mov dl, [typeSize]
+		syscall
+		
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [typeFinish]
+		mov rdx, typeFinishL
+		syscall
+		
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [dirSizeChar]
+		mov rdx, dirSizeCharL
+		syscall
+		
+		jmp returnPrintType
+	
+	printArchType:
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [typeArch]
+		mov dl, [typeSize]
+		syscall
+		
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [typeFinish]
+		mov rdx, typeFinishL
+		syscall
+		
+		mov r13, r15
+		mov eax, [r13 + 28]
+		xor r11, r11
+		and QWORD[sizedChars], 0
+		and QWORD[sizedChars + 8], 0
+		and QWORD[sizedChars + 16], 0
+		and QWORD[sizedChars + 24], 0
+		divChar:
+			xor rdx, rdx
+			cmp rax, 10
+			jle endDiv
+			mov r13, 10
+			div r13
+			add rdx, 48
+			mov [sizedChars + r11], dl
+			inc r11
+			jmp divChar
+			
+		endDiv:
+			inc r11
+			add rax, 48
+			mov [sizedChars + r11], al
+
+		mov r13, r11
+		mov rbx, r11
+		printSizedChars:
+			mov rax, _write
+			mov rdi, 1
+			lea rsi, [sizedChars + r13]
+			mov rdx, 1
+			syscall
+			dec r13
+			cmp r13d, -1
+			jne printSizedChars
+			
+		cmp rbx, 9	
+		jle oneTab2
+		backTab2:
+		
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [archFinish]
+		mov rdx, archFinishL
+		syscall
+			
+		jmp returnPrintType
+		
+	oneTab:
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [tabChar]
+		mov dl, 1
+		syscall
+		jmp backTab
+		
+	oneTab2:
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [tabChar]
+		mov dl, 1
+		syscall
+		jmp backTab2
+		
 printEnd:
 
 
@@ -391,6 +591,13 @@ caseCommands:
 		and r12d, _cd
 		cmp r12d, _cd
 		je verifyParameter
+		
+	caseQUIT:
+		xor r12, r12
+		mov r12d, [searcher]
+		and r12d, _quit
+		cmp r12d, _quit
+		je _stop
 		
 	caseERRO:
 		jmp errorCommand
