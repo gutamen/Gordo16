@@ -36,6 +36,9 @@ section .data
 	argErrorDIR: db "Erro: não é possível abrir diretório", 10, 0
     argErrorDIRL: equ $-argErrorDIR
 
+	promptDialog: db 10, 10, "Pressione [Enter] para continuar", 10, 0
+    promptDialogL: equ $-promptDialog
+	
     strOla  : db "Testi", 10, 0
     strOlaL : equ $-strOla
 	
@@ -94,6 +97,12 @@ section .text
     global _start
 
 _start:
+
+	mov rax, _write
+	mov rdi, 1
+	lea rsi, [clearTerm]		; "limpar" terminal no começo do programa
+	mov rdx, clearTermL
+	syscall
   
   mov r8, [rsp]
   mov [argv], r8
@@ -562,6 +571,14 @@ lsCommand:
 	
 	
 catCommand:
+	
+	mov rax, _write
+	mov rdi, 1
+	lea rsi, [clearTerm]
+	mov rdx, clearTermL
+	syscall
+	
+
 	mov r14, [longI]
 	xor rdx, rdx
 	xor rax, rax
@@ -696,6 +713,29 @@ catCommand:
 		and BYTE[bus], 0
 		mov QWORD[clustersPointer], 0
 		mov BYTE[commandType], 0
+		
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [promptDialog]
+		mov rdx, promptDialogL
+		syscall
+		
+		printConfirm:
+			mov rax, _read
+			mov rdi, 0
+			lea rsi, [bus]
+			mov rdx, 1
+			syscall
+			
+			cmp BYTE[bus], 0x0a
+			jne printConfirm
+		
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [clearTerm]
+		mov rdx, clearTermL
+		syscall
+		
 		jmp printDir
 
 
