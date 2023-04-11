@@ -78,6 +78,8 @@ section .data
 	
 	archFinish		: db 0x09, "|", 10, 0
 	archFinishL	: equ $-archFinish
+	
+	beep			: db 0x07, 0
 
 section .bss
     
@@ -127,7 +129,13 @@ section .text
     global _start
 
 _start:
-
+	
+	mov rax, _write
+	mov rdi, 1
+	lea rsi, [beep]
+	mov rdx, 1
+	syscall
+	
 	mov rax, _write
 	mov rdi, 1
 	lea rsi, [clearTerm]		; "limpar" terminal no começo do programa
