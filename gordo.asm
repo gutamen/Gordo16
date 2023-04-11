@@ -725,6 +725,7 @@ cdCommand:
 	jne withClusters
 		mov rsp, [stackPointerRead]
 	goBack:
+	
 	mov r13, r14
 	
 	shl r13, 1
@@ -753,11 +754,18 @@ cdCommand:
 		mov rsp, [suClusterPointer]
 	jmp goBack
 	
-	  
+	stackCorrection:
+		mov rax, [suClusterPointer]
+		and QWORD[suClusterPointer], 0
+		mov [stackPointerRead], rax
+
 	rootDirJMP:
 		mov rax, [rootDirectoryInit]
 		mov [readNow], rax
 		mov rsp, [stackPointerRead]
+		
+		cmp QWORD[suClusterPointer], 0
+		jne stackCorrection
 		
 		mov rax, _write
 		mov rdi, 1
@@ -841,9 +849,9 @@ cdCommand:
 		  jmp _initRead2
 
 	updateReadNow:
-		add r12, 2
 		mov r11, [suClusterPointer]
 		sub r11, r12
+		add r12, 2
 		mov ax, [r11]
 		cmp ax, 0xfff8
 		jae fimLeitura2
@@ -860,4 +868,11 @@ cdCommand:
 		dec r14
 	fimLeitura2:
 		mov [totalEntrances], r14
+		
+		mov rax, _write
+		mov rdi, 1
+		lea rsi, [clearTerm]
+		mov rdx, clearTermL
+		syscall
+		
 		jmp printDir
