@@ -9,7 +9,9 @@ Exibe todos os bytes dos arquivos dentro de diretórios.
 
 # Comandos
   *CD [nome_do_diretório]                 -> acessa o diretório selecionado
+  
   *CAT [nome_do_arquvio_com_extensão]     -> imprime todos os bytes como caractere no terminal
+  
   *LS                                     -> lista os arquivos do diretório atual
 
 # Build and Run
