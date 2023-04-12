@@ -4,6 +4,7 @@ Trabalho de SO
 Implementação de um leitor de imagem FAT16 desenvolvido em assembly.
 
 Executa leituras em todos os diretórios acessíveis.
+
 Exibe todos os bytes dos arquivos dentro de diretórios.
 
 # Comandos
@@ -13,6 +14,7 @@ Exibe todos os bytes dos arquivos dentro de diretórios.
 
 # Build and Run
 Build -> nasm -f elf64 gordo.asm ; ld gordo.o -o gordo.x
+
 Run   ->./gordo.x 
 
 
