@@ -338,15 +338,26 @@ _initRead:
   
 	cmp BYTE[rsp], 0xe5
 	je naoExiste
-    cmp BYTE[rsp + 11], 0x0f
-    jne noLongFile
+	cmp BYTE[rsp], 0x00
+	je fimDir
+	
+	xor rbx, rbx
+	mov bl, [rsp + 11]
+
+    cmp ebx, 16
+    je noLongFile
+	cmp ebx, 32
+    je noLongFile
+	
 		naoExiste:
         add rsp, 32
         jmp _initRead
+		
     noLongFile:
 		inc r14
 		cmp r13w, WORD[directoryEntries]
 			je fimLeitura
+	fimDir:
 		xor r10, r10
 		cmp r10b, BYTE[rsp]
 			je fimLeituraComRedimensionamento
@@ -354,7 +365,7 @@ _initRead:
 
 fimLeituraComRedimensionamento:
 	add rsp, 32
-	dec r14
+	
 fimLeitura:
 	
 	mov [totalEntrances], r14
@@ -445,6 +456,13 @@ directoryPrint:
 	je printDirType
 	cmp BYTE[r13], 0x20
 	je printArchType
+	
+	mov rax, _write
+	mov rdi, 1
+	lea rsi, [jumpLine]
+	mov rdx, 1
+	syscall
+	
 	returnPrintType:
 	
 	
@@ -1090,22 +1108,33 @@ cdCommand:
 
 	  
 	  
-	  cmp BYTE[rsp], 0xe5
-	  je naoExiste2
-		cmp BYTE[rsp + 11], 0x0f
-		jne noLongFile2
-		  naoExiste2:
-			add rsp, 32
-			jmp _initRead2
-		noLongFile2:
-		  inc r14
+	cmp BYTE[rsp], 0xe5
+	je naoExiste2
+	cmp BYTE[rsp], 0x00
+	je fimDir2
 	
-		  xor r10, r10
-		  cmp r10b, BYTE[rsp]
+	xor rbx, rbx
+	mov bl, [rsp + 11]
+
+    cmp ebx, 16
+    je noLongFile2
+	cmp ebx, 32
+    je noLongFile2
+	
+		naoExiste2:
+        add rsp, 32
+        jmp _initRead2
+		
+    noLongFile2:
+		inc r14
+		cmp r13w, WORD[directoryEntries]
+			je fimLeitura2
+	fimDir2:
+		xor r10, r10
+		cmp r10b, BYTE[rsp]
 			je fimLeituraComRedimensionamento2
-		  cmp QWORD[clusterSize], r15
-		  je updateReadNow
-		  jmp _initRead2
+		jmp _initRead2
+
 
 	updateReadNow:
 		mov r11, [suClusterPointer]
@@ -1124,7 +1153,7 @@ cdCommand:
 		
 	fimLeituraComRedimensionamento2:
 		add rsp, 32
-		dec r14
+		
 	fimLeitura2:
 		mov [totalEntrances], r14
 		
