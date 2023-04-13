@@ -10,20 +10,20 @@
 %define _read     0
 %define _seek     8
 %define _close    3
-%define readOnly  0o    ; flag open()
-%define writeOnly 1o    ; flag open()
-%define readwrite 2o    ; flag open()
-%define openrw    102o  ; flag open()
-%define userWR    644o  ; Read+Write+Execute
-%define _cat	  0x20544143
-%define _ls		  0x0000534c
-%define _cd		  0x00204443
-%define _quit	  0x54495551
+%define readOnly  0o    		; flag open()
+%define writeOnly 1o    			; flag open()
+%define readwrite 2o    			; flag open()
+%define openrw    102o  		; flag open()
+%define userWR    644o  		; Read+Write+Execute
+%define _cat	  	0x20544143
+%define _ls		0x0000534c
+%define _cd		0x00204443
+%define _quit	0x54495551
 
 section .data
     
-    argErrorS : db "Erro: Quantidade de Parâmetros incorreta", 10, 0
-    argErrorSL: equ $-argErrorS 
+	argErrorS : db "Erro: Quantidade de Parâmetros incorreta", 10, 0
+	argErrorSL: equ $-argErrorS 
 
     arqErrorS : db "Erro: Arquivo não foi aberto", 10, 0
     arqErrorSL: equ $-arqErrorS
@@ -52,7 +52,7 @@ section .data
 
 	tabChar	: db 0x09, 0
 	
-	
+	trintaDois	: dq 32
 	; moldura para print
 	firstLine	: db "|", 0x09, "Nome", 0x09, 0x09, "|", 0x20, "Tipo", 0x20, "|", 0x09, "Tamanho", 0x09, 0x09, "|", 10 ,0 
 	firstLineL	: equ $-firstLine
@@ -88,37 +88,37 @@ section .bss
     argc    : resq 1
   
 
-    disassemble       : resb 3  ; offset 0
-    OEMIdentifier     : resb 8  ; offset 3
-    bytesPerSector    : resb 2  ; offset 11
-    sectorsPerCluster : resb 1  ; offset 13
-    reservedSectors   : resb 2  ; offset 14
-    FATNumber         : resb 1  ; offset 16
-    directoryEntries  : resb 2  ; offset 17
-    totalSectors      : resb 2  ; offset 19
-    mediaDescriptor   : resb 1  ; offset 21
-    sectorsPerFAT     : resb 2  ; offset 22
-    sectorsPerTrack   : resb 2  ; offset 24
-    headsOfStorage    : resb 2  ; offset 26
-    hiddenSectors     : resb 4  ; offset 28
-    largeTotalSectors : resb 4  ; offset 32
+    disassemble       	: resb 3		; offset 0
+    OEMIdentifier     	: resb 8		; offset 3
+    bytesPerSector    	: resb 2  	; offset 11
+    sectorsPerCluster 	: resb 1  	; offset 13
+    reservedSectors   	: resb 2  	; offset 14
+    FATNumber         	: resb 1  	; offset 16
+    directoryEntries  	: resb 2		; offset 17
+    totalSectors      	: resb 2		; offset 19
+    mediaDescriptor   	: resb 1  	; offset 21
+    sectorsPerFAT     	: resb 2  	; offset 22
+    sectorsPerTrack  	: resb 2  	; offset 24
+    headsOfStorage   	: resb 2  	; offset 26
+    hiddenSectors     	: resb 4		; offset 28
+	largeTotalSectors 	: resb 4  	; offset 32
 
-    rootDirectoryInit : resq 1  ; posição no arquivo
-    dataClustersInit  : resq 1  ; posição dos dados
-    firstFATTable     : resq 1  ; posição da primeira FAT
-    readNow	          : resq 1  ; qual arquivo está sendo lido
-	stackPointerRead  : resq 1  ; salvar onde estava a pilha no começo da leitura do diretório
+    rootDirectoryInit 	: resq 1  ; posição no arquivo
+    dataClustersInit  	: resq 1  ; posição dos dados
+    firstFATTable     	: resq 1  ; posição da primeira FAT
+    readNow	          	: resq 1  ; qual arquivo está sendo lido
+	stackPointerRead 	: resq 1  ; salvar onde estava a pilha no começo da leitura do diretório
 	
-	totalEntrances	  : resq 1  ; entradas no diretório lido
-	clusterSize	      : resq 1  ; quantos bytes tem por cluster
-	clusterCount	  : resq 1
-	clustersPointer	  : resq 1
-	bus				  : resb 1
-	fileSize		  : resq 1
-	suClusterPointer  : resq 1
+	totalEntrances	  	: resq 1  ; entradas no diretório lido
+	clusterSize	      	: resq 1  ; quantos bytes tem por cluster
+	clusterCount	  		: resq 1
+	clustersPointer	  	: resq 1
+	bus				  		: resb 1
+	fileSize		  			: resq 1
+	suClusterPointer  	: resq 1
 	
-	commandType		  : resb 1
-	longI             : resq 1
+	commandType		: resb 1
+	longI             		: resq 1
 
 	searcher		  	: resb 128; leitor do terminal
 	tempSearcher	: resb 128; reorganizar string lida
@@ -142,110 +142,110 @@ _start:
 	mov rdx, clearTermL
 	syscall
   
-  mov r8, [rsp]
-  mov [argv], r8
-  cmp QWORD[argv], 2        ; Verifica a quantidade de argumentos
-  jne _argError
+	mov r8, [rsp]
+	mov [argv], r8
+	cmp QWORD[argv], 2        ; Verifica a quantidade de argumentos
+	jne _argError
   
-  mov r8, rsp
-  add r8, 16
-  mov r9, [r8]
-  mov [argc], r9              ; Salvando endereço do argumento em variável
+	mov r8, rsp
+	add r8, 16
+	mov r9, [r8]
+	mov [argc], r9              ; Salvando endereço do argumento em variável
 
 
-  mov rax, _open
-  mov rdi, [argc]
-  mov rsi, readwrite
-  mov rdx, userWR
-  syscall
+	mov rax, _open
+	mov rdi, [argc]
+	mov rsi, readwrite
+	mov rdx, userWR
+	syscall
 
-  mov [arquivo], rax                   ; Salvar ponteiro do arquivo
-  cmp rax, 0                           ; Verifica se o arquivo foi aberto
-  jl _arqError
+	mov [arquivo], rax                   ; Salvar ponteiro do arquivo
+	cmp rax, 0                           ; Verifica se o arquivo foi aberto
+	jl _arqError
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [disassemble]
-  mov rdx, 3
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [disassemble]
+	mov rdx, 3
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [OEMIdentifier]
-  mov rdx, 8
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [OEMIdentifier]
+	mov rdx, 8
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [bytesPerSector]
-  mov rdx, 2
-  syscall 
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [bytesPerSector]
+	mov rdx, 2
+	syscall 
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [sectorsPerCluster]
-  mov rdx, 1
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [sectorsPerCluster]
+	mov rdx, 1
+	syscall
     
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [reservedSectors]
-  mov rdx, 2
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [reservedSectors]
+	mov rdx, 2
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [FATNumber]
-  mov rdx, 1
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [FATNumber]
+	mov rdx, 1
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [directoryEntries]
-  mov rdx, 2
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [directoryEntries]
+	mov rdx, 2
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [totalSectors]
-  mov rdx, 2
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [totalSectors]
+	mov rdx, 2
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [mediaDescriptor]
-  mov rdx, 1
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [mediaDescriptor]
+	mov rdx, 1
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [sectorsPerFAT]
-  mov rdx, 2
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [sectorsPerFAT]
+	mov rdx, 2
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [sectorsPerTrack]
-  mov rdx, 2
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [sectorsPerTrack]
+	mov rdx, 2
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [headsOfStorage]
-  mov rdx, 2
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [headsOfStorage]
+	mov rdx, 2
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [hiddenSectors]
-  mov rdx, 4
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [hiddenSectors]
+	mov rdx, 4
+	syscall
 
-  mov rax, _read
-  mov rdi, [arquivo]
-  lea rsi, [largeTotalSectors]
-  mov rdx, 4
-  syscall
+	mov rax, _read
+	mov rdi, [arquivo]
+	lea rsi, [largeTotalSectors]
+	mov rdx, 4
+	syscall
 
 
 	xor rdx, rdx
@@ -264,22 +264,22 @@ _start:
 	mov r9w, [bytesPerSector]		; reservados pela FAT
 	mul	r9
 
-  add rax, rbx
-  mov [rootDirectoryInit], rax
+	add rax, rbx
+	mov [rootDirectoryInit], rax
 
-  xor rdx, rdx
-  xor rax, rax
-  mov ax, [directoryEntries]
-  imul rax, 32
-  xor r15, r15
-  mov r15w, [bytesPerSector]
-  div r15
-  xor r14, r14
-  mov r14, rdx
-  xor rax, rax
-  mov ax, [directoryEntries]
-  imul rax, 32
-  mov rcx, r14
+	xor rdx, rdx
+	xor rax, rax
+	mov ax, [directoryEntries]
+	imul rax, 32
+	xor r15, r15
+	mov r15w, [bytesPerSector]
+	div r15
+	xor r14, r14
+	mov r14, rdx
+	xor rax, rax
+	mov ax, [directoryEntries]
+	imul rax, 32
+	mov rcx, r14
   
   jecxz setorSemResto
     xor rbx, rbx
@@ -429,7 +429,7 @@ directoryPrint:
 		jmp printExtension
 	endExtension:
 	
-	cmp rbx, 6
+	cmp rbx, 5
 	jle oneTab
 	backTab:
 	
@@ -1054,11 +1054,11 @@ cdCommand:
 			mov rsi, rbx
 			xor rdx, rdx
 			syscall
-				
+			
 			sub rsp, 2
 			mov rax, _read
 			mov rdi, [arquivo]
-			mov rsi, [rsp]
+			mov rsi, rsp
 			mov rdx, 2
 			syscall
 		jmp cdWithMoreClusters
