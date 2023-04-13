@@ -270,7 +270,7 @@ _start:
 	xor rdx, rdx
 	xor rax, rax
 	mov ax, [directoryEntries]
-	imul rax, 32
+	mul QWORD[trintaDois]
 	xor r15, r15
 	mov r15w, [bytesPerSector]
 	div r15
@@ -278,79 +278,79 @@ _start:
 	mov r14, rdx
 	xor rax, rax
 	mov ax, [directoryEntries]
-	imul rax, 32
+	mul QWORD[trintaDois]
 	mov rcx, r14
   
-  jecxz setorSemResto
-    xor rbx, rbx
-    mov bx, [bytesPerSector]
-    add rax, rbx
+	jecxz setorSemResto
+		xor rbx, rbx
+		mov bx, [bytesPerSector]
+		add rax, rbx
 
 
-  setorSemResto:
-  add rax, [rootDirectoryInit]
-  mov [dataClustersInit], rax
+	setorSemResto:
+	add rax, [rootDirectoryInit]
+	mov [dataClustersInit], rax
 
-	xor rbx, rbx
-	xor rax, rax
-	xor rdx, rdx
-	mov ax, [bytesPerSector]
-	mov bx, [reservedSectors]
+		xor rbx, rbx
+		xor rax, rax
+		xor rdx, rdx
+		mov ax, [bytesPerSector]
+		mov bx, [reservedSectors]
   
-  mul rbx
-  mov [firstFATTable], rax
+	mul rbx
+	mov [firstFATTable], rax
 
-  mov rax, [rootDirectoryInit]
-  mov [readNow], rax
+	mov rax, [rootDirectoryInit]
+	mov [readNow], rax
 
-  xor rdx, rdx
-  xor rax, rax
-  xor rbx, rbx
-  mov al, [sectorsPerCluster]
-  mov bx, [bytesPerSector]
-  mul rbx
-  mov [clusterSize], rax
+	xor rdx, rdx
+	xor rax, rax
+	xor rbx, rbx
+	mov al, [sectorsPerCluster]
+	mov bx, [bytesPerSector]
+	mul rbx
+	mov [clusterSize], rax
 
 _readHead: 
-  mov [stackPointerRead], rsp
-  xor r15, r15
-  xor r14, r14
-  xor r13, r13
+	mov [stackPointerRead], rsp
+	xor r15, r15
+	xor r14, r14
+	xor r13, r13
 _initRead:
 
-  mov rax, _seek
-  mov rdi, [arquivo]
-  mov rsi, [readNow]
-  add rsi, r15
-  xor rdx, rdx
-  syscall
+	mov rax, _seek
+	mov rdi, [arquivo]
+	mov rsi, [readNow]
+	add rsi, r15
+	xor rdx, rdx
+	syscall
   
-  add r15, 32
+	add r15, 32
 
-  sub rsp, 32
-  mov rax, _read
-  mov rdi, [arquivo]
-  mov rsi, rsp
-  mov rdx, 32
-  syscall
+	sub rsp, 32
+	mov rax, _read
+	mov rdi, [arquivo]
+	mov rsi, rsp
+	mov rdx, 32
+	syscall
 
-  inc r13
+	inc r13
   
-  cmp BYTE[rsp], 0xe5
-  je naoExiste
+	cmp BYTE[rsp], 0xe5
+	je naoExiste
     cmp BYTE[rsp + 11], 0x0f
     jne noLongFile
-      naoExiste:
+		naoExiste:
         add rsp, 32
         jmp _initRead
     noLongFile:
-      inc r14
-	  cmp r13w, WORD[directoryEntries]
-		je fimLeitura
-	  xor r10, r10
-	  cmp r10b, BYTE[rsp]
-		je fimLeituraComRedimensionamento
-      jmp _initRead
+		inc r14
+		cmp r13w, WORD[directoryEntries]
+			je fimLeitura
+		xor r10, r10
+		cmp r10b, BYTE[rsp]
+			je fimLeituraComRedimensionamento
+		jmp _initRead
 
 fimLeituraComRedimensionamento:
 	add rsp, 32
