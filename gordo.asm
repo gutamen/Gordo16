@@ -429,7 +429,7 @@ directoryPrint:
 		jmp printExtension
 	endExtension:
 	
-	cmp rbx, 5
+	cmp rbx,  6
 	jle oneTab
 	backTab:
 	
