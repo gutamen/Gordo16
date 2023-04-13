@@ -248,21 +248,24 @@ _start:
   syscall
 
 
-  xor rax, rax
-  xor rbx, rbx
-  mov ax, [bytesPerSector]
-  mov bx, [reservedSectors]       ; reservados para boot record
-  imul rbx, rax
+	xor rdx, rdx
+	xor rax, rax
+	xor rbx, rbx
+	mov ax, [bytesPerSector]
+	mov bx, [reservedSectors]       ; reservados para boot record
+	mul rbx
+	mov rbx, rax
+	
+	xor rax, rax
+	xor r9, r9
+	mov al, [FATNumber]
+	mov r9w, [sectorsPerFAT]
+	mul r9
+	mov r9w, [bytesPerSector]		; reservados pela FAT
+	mul	r9
 
-  xor r8, r8
-  xor r9, r9
-  mov r8b, [FATNumber]
-  mov r9w, [sectorsPerFAT]
-  imul r8, r9                     ; reservados pela FAT
-  imul r8, rax
-
-  add r8, rbx
-  mov [rootDirectoryInit], r8
+  add rax, rbx
+  mov [rootDirectoryInit], rax
 
   xor rdx, rdx
   xor rax, rax
