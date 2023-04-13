@@ -291,12 +291,13 @@ _start:
   add rax, [rootDirectoryInit]
   mov [dataClustersInit], rax
 
-  xor rax, rax
-  xor rdx, rdx
-  mov ax, [bytesPerSector]
-  mov bx, [reservedSectors]
+	xor rbx, rbx
+	xor rax, rax
+	xor rdx, rdx
+	mov ax, [bytesPerSector]
+	mov bx, [reservedSectors]
   
-  imul rax, rbx
+  mul rbx
   mov [firstFATTable], rax
 
   mov rax, [rootDirectoryInit]
